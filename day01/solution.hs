@@ -1,24 +1,22 @@
 import Common
 
 massToFuel :: Integer -> Integer
-massToFuel m = ((m `div` 3) - 2)
+massToFuel m = m `div` 3 - 2
 
 stringToInteger :: String -> Integer
-stringToInteger str = read str :: Integer
+stringToInteger = read
 
 mapAsIntegerAndSum :: (Integer -> Integer) -> [String] -> Integer
-mapAsIntegerAndSum f strings = (sum (map (f . stringToInteger) strings))
+mapAsIntegerAndSum f strings = sum (map (f . stringToInteger) strings)
 
 solution1 :: [String] -> Integer
 solution1 = mapAsIntegerAndSum massToFuel
 
 fuelSequence :: Integer -> [Integer]
-fuelSequence mass = let
-    fuel = massToFuel mass
-    in fuel : (fuelSequence fuel)
+fuelSequence mass = tail (iterate massToFuel mass)
 
 getTotalFuel :: Integer -> Integer
-getTotalFuel mass = (sum (takeWhile (>0) (fuelSequence mass)))
+getTotalFuel mass = sum (takeWhile (>0) (fuelSequence mass))
     
 solution2 :: [String] -> Integer
 solution2 = mapAsIntegerAndSum getTotalFuel
