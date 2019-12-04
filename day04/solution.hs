@@ -7,24 +7,35 @@ import Data.Time
 
 range = [146810..612564]
 
-digits :: Int -> [Int]
-digits = map digitToInt . show
+type IntString = [Int]
+toIntString :: Int -> IntString
+toIntString n = map digitToInt (show n)
 
-monotone :: Int -> Bool
-monotone password = let passwordDigits = digits password in (sort passwordDigits) == passwordDigits
+monotone :: Int -> Int -> [IntString]
+monotone 1 startDigit = [[startDigit]]
+monotone digitLength startDigit = let tails = concatMap (\d -> monotone (digitLength - 1) d) [startDigit..9] in
+    map (startDigit:) tails
+    
+monotonesOfLength :: Int -> [IntString]
+monotonesOfLength len = (concatMap (monotone len) [1..9])
 
-valid :: Int -> Bool
-valid password = let passwordDigits = digits password in 
-    monotone password && (length (group passwordDigits) < length passwordDigits)
+valid :: IntString -> Bool
+valid password = length (group password) < length password
+
+passwordCandidates :: [IntString]
+passwordCandidates = let 
+    lower = toIntString 146810
+    upper = toIntString 612564
+    in filter (\p -> p >= lower && p <= upper) (monotonesOfLength 6)
 
 solution1 :: Int
-solution1 = length (filter valid range)
+solution1 = length (filter valid passwordCandidates)
 
-newValid :: Int -> Bool
-newValid password = monotone password && any (\g -> (length g) == 2) (group $ digits password)
+newValid :: IntString -> Bool
+newValid password = any (\g -> (length g) == 2) (group $ password)
 
 solution2 :: Int
-solution2 = length (filter newValid range)
+solution2 = length (filter newValid passwordCandidates)
 
 main = do
     start <- getCurrentTime
