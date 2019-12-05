@@ -94,17 +94,6 @@ run :: State -> State
 run empty@(St ip input [] output) = empty
 run state@(St ip input memory output) = let opcode@(Code code _) = parseOpCode state
     in if code == 99 then state else run (dispatch state opcode)
-    
-runLoop empty@(St ip input [] output) = return ()
-runLoop state@(St ip input memory output) = do
-    putStrLn "---------"
-    print (memory !! ip)
-    print memory
-    let opcode@(Code code _) = parseOpCode state
-    print opcode
-    let newState = (if code == 99 then state else dispatch state opcode)
-    print state
-    runLoop newState
 
 --- Apply solution ---
 
