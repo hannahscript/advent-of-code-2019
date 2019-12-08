@@ -4,8 +4,12 @@ module Common (
     getInputFromCommaList,
     mapWithIndex,
     stringToInt,
-    check
+    check,
+    getInput
 ) where
+
+getInput :: IO String
+getInput = readFile "input.txt"
 
 getInputAsLines :: IO [String]
 getInputAsLines = do
