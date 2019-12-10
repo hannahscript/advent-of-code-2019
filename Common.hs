@@ -4,6 +4,7 @@ module Common (
     getInputFromCommaList,
     mapWithIndex,
     stringToInt,
+    stringToInteger,
     check,
     getInput
 ) where
@@ -31,6 +32,9 @@ mapWithIndex f xs = map (\pair -> (f (snd pair) (fst pair))) (zip [0..] xs)
 
 stringToInt :: String -> Int
 stringToInt = read
+
+stringToInteger :: String -> Integer
+stringToInteger = read
 
 check :: (Eq a, Show a) => String -> a -> a -> String
 check description expected actual = description ++ (if expected == actual then " [OK]" else (" failed. Expected " ++ (show expected) ++ ", actual " ++ (show actual)))
