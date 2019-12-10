@@ -8,11 +8,11 @@ module IntCode (
 
 import Common
 import Data.Char (digitToInt)
-import qualified Data.Map as Map
+import qualified Data.IntMap.Strict as IntMap
 import Debug.Trace
 
 -- Instruction pointer, relativeBase, Input, Memory, Output
-data State = St Int Int [Int] (Map.Map Int Int) [Int]
+data State = St Int Int [Int] (IntMap.IntMap Int) [Int]
 
 -- Actual opcode, parameters
 data OpCode = Code Int [Int]
@@ -26,8 +26,8 @@ instance Show OpCode where
 instance Show State where
     show (St ip _ input _ output) = "IP#" ++ (Prelude.show ip) ++ " IN=" ++ (Prelude.show input) ++ " OUT=" ++ (Prelude.show output)
 
-(!) :: (Map.Map Int Int) -> Int -> Int
-map ! i = Map.findWithDefault 0 i map
+(!) :: (IntMap.IntMap Int) -> Int -> Int
+map ! i = IntMap.findWithDefault 0 i map
 
 getParameterTypes :: Int -> [ParameterMode]
 getParameterTypes 1 = [Src, Src, Dest] -- add
@@ -41,45 +41,45 @@ getParameterTypes 8 = [Src, Src, Dest] -- equals
 getParameterTypes 9 = [Src]       -- changebase
 getParameterTypes 99 = []       -- end
     
-addDefaults :: [Int] -> [Int] -> [Int]
-addDefaults defaultList list = list ++ defaultTail
-    where defaultTail = drop (length list) defaultList
+zipDefaultL :: a -> [a] -> [b] -> [(a,b)]
+zipDefaultL d [] []         = []
+zipDefaultL d (x:xs) []     = []
+zipDefaultL d [] (y:ys)     = (d, y) : zipDefaultL d [] ys
+zipDefaultL d (x:xs) (y:ys) = (x, y) : zipDefaultL d xs ys
     
 getParameters :: Int -> [Int] -> [Parameter]
-getParameters code paramModes = zip (paramModes ++ paramTail) types
-    where types = getParameterTypes code
-          paramTail = take (length types - length paramModes) $ repeat 0
+getParameters code paramModes = zipDefaultL 0 paramModes (getParameterTypes code)
 
 getParameterValues :: State -> [Parameter] -> [Int]
 getParameterValues (St ip base input memory output) paramModes = mapWithIndex (\(mode, ptype) offset -> getParam (offset + 1) mode ptype) paramModes
     where immediateValue offset = memory ! (ip + offset)
-          getParam offset 0 Dest     = immediateValue offset                   -- position mode, dest
-          getParam offset 0 Src     = memory ! (immediateValue offset)         -- position mode, src
-          getParam offset 1 _     = immediateValue offset                      -- immediate mode, src (dest will never be immediate)
-          getParam offset 2 Dest    = base + (immediateValue offset)           -- relative mode, dest
-          getParam offset 2 Src    = memory ! (base + (immediateValue offset)) -- relative mode
+          getParam offset 0 Dest = immediateValue offset                     -- position mode, dest
+          getParam offset 0 Src  = memory ! (immediateValue offset)          -- position mode, src
+          getParam offset 1 _    = immediateValue offset                     -- immediate mode, src (dest will never be immediate)
+          getParam offset 2 Dest = base + (immediateValue offset)            -- relative mode, dest
+          getParam offset 2 Src  = memory ! (base + (immediateValue offset)) -- relative mode
 
 parseOpCode :: State -> OpCode
 parseOpCode state@(St ip base input memory output) = Code code params
     where num = memory ! ip
           (codeR : codeL : paramModes) = reverse (let n = show num in if length n == 1 then '0':n else n)
-          code = stringToInt (codeL:codeR:[])
+          code = (digitToInt codeL) * 10 + (digitToInt codeR)
           params = getParameterValues state (getParameters code (map digitToInt paramModes))
           
 parseProgram :: [String] -> [Int]
 parseProgram program = map stringToInt program
 
 instruction_add :: State -> OpCode -> State
-instruction_add state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (Map.insert replaceIndex (a + b) memory) output
+instruction_add state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (IntMap.insert replaceIndex (a + b) memory) output
     where [a, b, replaceIndex] = params
           
 instruction_mult :: State -> OpCode -> State
-instruction_mult state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (Map.insert replaceIndex (a * b) memory) output
+instruction_mult state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (IntMap.insert replaceIndex (a * b) memory) output
     where [a, b, replaceIndex] = params
           
 instruction_read :: State -> OpCode -> State
 instruction_read state@(St ip base [] memory output) opcode@(Code code params) = state -- If input is empty, wait
-instruction_read state@(St ip base input memory output) opcode@(Code code params) = St (ip + 2) base restInput (Map.insert replaceIndex i memory) output
+instruction_read state@(St ip base input memory output) opcode@(Code code params) = St (ip + 2) base restInput (IntMap.insert replaceIndex i memory) output
     where [replaceIndex] = params
           (i:restInput) = input
           
@@ -96,11 +96,11 @@ instruction_jumpiffalse state@(St ip base input memory output) opcode@(Code code
     where [test, val] = params
     
 instruction_lessthan :: State -> OpCode -> State
-instruction_lessthan state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (Map.insert replaceIndex (if a < b then 1 else 0) memory) output
+instruction_lessthan state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (IntMap.insert replaceIndex (if a < b then 1 else 0) memory) output
     where [a, b, replaceIndex] = params
     
 instruction_equals :: State -> OpCode -> State
-instruction_equals state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (Map.insert replaceIndex (if a == b then 1 else 0) memory) output
+instruction_equals state@(St ip base input memory output) opcode@(Code code params) = St (ip + 4) base input (IntMap.insert replaceIndex (if a == b then 1 else 0) memory) output
     where [a, b, replaceIndex] = params
     
 instruction_changebase :: State -> OpCode -> State
@@ -130,4 +130,4 @@ run state@(St ip base input memory output) = let opcode@(Code code _) = parseOpC
     
 initState :: [Int] -> [Int] -> State
 initState input program = St 0 0 input memory []
-    where memory = Map.fromList (zip [0..] program)
+    where memory = IntMap.fromList (zip [0..] program)
