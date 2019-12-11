@@ -15,9 +15,10 @@ type Vector = (Int, Int)
 add :: Vector -> Vector -> Vector
 add (x, y) (x', y') = (x + x', y + y')
 
--- If true, contains an asteroid
--- Map, Width, Height
+-- Colours for each point
 type Hull = Map.Map Vector Int
+
+-- Points that have been painted
 type PaintLocations = Set.Set Vector
 
 -- Position, direction
@@ -53,12 +54,13 @@ instructRobot progress program = case output
 draw :: Hull -> String
 draw hull = intercalate "\n" $ map row (reverse [minY..maxX])
     where pointList = Map.toList hull
-          minX  = minimum (map (\((x, _), _) -> x) pointList)
-          maxX  = maximum (map (\((x, _), _) -> x) pointList)
-          minY  = minimum (map (\((_, y), _) -> y) pointList)
-          maxY  = maximum (map (\((_, y), _) -> y) pointList)
+          xs    = (map (\((x, _), _) -> x)) pointList
+          ys    = (map (\((_, y), _) -> y)) pointList
+          minX  = minimum xs
+          maxX  = maximum xs
+          minY  = minimum ys
+          maxY  = maximum ys
           row y = map (\x -> if (Map.findWithDefault black (x, y) hull) == black then ' ' else '█') (reverse [minX..maxX])
-          
 
 main = do
     start <- getCurrentTime
