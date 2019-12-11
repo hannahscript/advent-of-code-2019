@@ -3,7 +3,10 @@ module IntCode (
     parseProgram,
     initState,
     run,
-    advance
+    runUntilBlocked,
+    advance,
+    withInput,
+    withOutput
 ) where
 
 import Common
@@ -21,7 +24,7 @@ data ParameterMode = Dest | Src deriving Show
 type Parameter = (Int, ParameterMode)
 
 instance Show OpCode where
-    show (Code code params) = "#" ++ (Prelude.show code) ++ " [" ++ (Prelude.show params) ++ "]"
+    show (Code code params) = "#" ++ (Prelude.show code) ++ (Prelude.show params)
     
 instance Show State where
     show (St ip _ input _ output) = "IP#" ++ (Prelude.show ip) ++ " IN=" ++ (Prelude.show input) ++ " OUT=" ++ (Prelude.show output)
@@ -30,16 +33,17 @@ instance Show State where
 map ! i = IntMap.findWithDefault 0 i map
 
 getParameterTypes :: Int -> [ParameterMode]
-getParameterTypes 1 = [Src, Src, Dest] -- add
-getParameterTypes 2 = [Src, Src, Dest] -- mult
-getParameterTypes 3 = [Dest]       -- read
-getParameterTypes 4 = [Src]       -- write
-getParameterTypes 5 = [Src, Src]    -- jumpiftrue
-getParameterTypes 6 = [Src, Src]    -- jumpiffalse
-getParameterTypes 7 = [Src, Src, Dest] -- lessthan
-getParameterTypes 8 = [Src, Src, Dest] -- equals
-getParameterTypes 9 = [Src]       -- changebase
-getParameterTypes 99 = []       -- end
+getParameterTypes 1    = [Src, Src, Dest] -- add
+getParameterTypes 2    = [Src, Src, Dest] -- mult
+getParameterTypes 3    = [Dest]           -- read
+getParameterTypes 4    = [Src]            -- write
+getParameterTypes 5    = [Src, Src]       -- jumpiftrue
+getParameterTypes 6    = [Src, Src]       -- jumpiffalse
+getParameterTypes 7    = [Src, Src, Dest] -- lessthan
+getParameterTypes 8    = [Src, Src, Dest] -- equals
+getParameterTypes 9    = [Src]            -- changebase
+getParameterTypes 99   = []              -- end
+getParameterTypes code = error $ "Unknown opcode " ++ (show code)
     
 zipDefaultL :: a -> [a] -> [b] -> [(a,b)]
 zipDefaultL d [] []         = []
@@ -59,12 +63,15 @@ getParameterValues (St ip base input memory output) paramModes = mapWithIndex (\
           getParam offset 2 Dest = base + (immediateValue offset)            -- relative mode, dest
           getParam offset 2 Src  = memory ! (base + (immediateValue offset)) -- relative mode
 
+digitize :: Int -> [Int]
+digitize = (map digitToInt) . show
+
 parseOpCode :: State -> OpCode
 parseOpCode state@(St ip base input memory output) = Code code params
     where num = memory ! ip
-          (codeR : codeL : paramModes) = reverse (let n = show num in if length n == 1 then '0':n else n)
-          code = (digitToInt codeL) * 10 + (digitToInt codeR)
-          params = getParameterValues state (getParameters code (map digitToInt paramModes))
+          (codeR : codeL : paramModes) = let digits = digitize num in reverse (if num < 100 then 0:digits else digits)
+          code = codeL * 10 + codeR
+          params = getParameterValues state (getParameters code paramModes)
           
 parseProgram :: [String] -> [Int]
 parseProgram program = map stringToInt program
@@ -117,6 +124,7 @@ dispatch state opcode@(Code 6 _) = instruction_jumpiffalse state opcode
 dispatch state opcode@(Code 7 _) = instruction_lessthan state opcode
 dispatch state opcode@(Code 8 _) = instruction_equals state opcode
 dispatch state opcode@(Code 9 _) = instruction_changebase state opcode
+dispatch state opcode            = error $ "Unknown opcode " ++ (show opcode)
 
 advance :: State -> State
 advance state@(St ip base input memory output) = let opcode@(Code code _) = parseOpCode state
@@ -126,8 +134,20 @@ run :: State -> State
 run state@(St ip base input memory output) = let opcode@(Code code _) = parseOpCode state
     in if code == 99 then state else run (dispatch state opcode)
     
+runUntilBlocked :: State -> State
+runUntilBlocked state@(St ip base input memory output) = if code == 99
+    then state
+    else (let newState@(St newIp _ _ _ _) = dispatch state opcode
+        in if ip == newIp then newState else (runUntilBlocked newState))
+    where opcode@(Code code _) = parseOpCode state
 
     
 initState :: [Int] -> [Int] -> State
 initState input program = St 0 0 input memory []
     where memory = IntMap.fromList (zip [0..] program)
+    
+withInput :: State -> [Int] -> State
+withInput (St ip base _ memory output) input = (St ip base input memory output)
+
+withOutput :: State -> [Int] -> State
+withOutput (St ip base input memory _) output= (St ip base input memory output)
