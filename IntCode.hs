@@ -6,7 +6,9 @@ module IntCode (
     runUntilBlocked,
     advance,
     withInput,
-    withOutput
+    withOutput,
+    withIO,
+    alterMemory
 ) where
 
 import Common
@@ -150,4 +152,10 @@ withInput :: State -> [Int] -> State
 withInput (St ip base _ memory output) input = (St ip base input memory output)
 
 withOutput :: State -> [Int] -> State
-withOutput (St ip base input memory _) output= (St ip base input memory output)
+withOutput (St ip base input memory _) output = (St ip base input memory output)
+
+withIO :: State -> [Int] -> [Int] -> State
+withIO (St ip base _ memory _) input output = (St ip base input memory output)
+
+alterMemory :: State -> Int -> Int -> State
+alterMemory (St ip base input memory output) pos val = (St ip base input (IntMap.insert pos val memory) output)
