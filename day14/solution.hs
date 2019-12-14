@@ -2,7 +2,7 @@ import Common
 
 import qualified Data.Map.Strict as Map
 
-import Debug.Trace
+import Data.Time
 
 -- Name, Amount
 data Chemical = Chemical String Int deriving Show
@@ -83,13 +83,16 @@ steppingFindFirst producer predicate start step = steppingFindFirst producer pre
     where (overshoot, _) = findFirst producer predicate start step
 
 main = do
+    start <- getCurrentTime
     content <- getInputAsLines
     let reactionMap = parseReactions content
     let (_, ore) = produce reactionMap Map.empty (Chemical "FUEL" 1)
     putStrLn ("Ore needed: " ++ show ore)
     let searchStart = trillion `div` ore
-    let (fuelPlusOne, _) = steppingFindFirst (\n -> produce' reactionMap (Chemical "FUEL" n)) (> trillion) searchStart 10000
+    let (fuelPlusOne, _) = steppingFindFirst (\n -> produce' reactionMap (Chemical "FUEL" n)) (> trillion) searchStart 100000
     putStrLn ("Fuel for 1e12 ore: " ++ show (fuelPlusOne - 1))
+    end <- getCurrentTime
+    print (diffUTCTime end start)
     
 -- Solution 1: 261960
 -- Solution 2: 4366186
