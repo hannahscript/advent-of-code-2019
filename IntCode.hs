@@ -8,7 +8,8 @@ module IntCode (
     withInput,
     withOutput,
     withIO,
-    alterMemory
+    alterMemory,
+    output
 ) where
 
 import Common
@@ -159,3 +160,6 @@ withIO (St ip base _ memory _) input output = (St ip base input memory output)
 
 alterMemory :: State -> Int -> Int -> State
 alterMemory (St ip base input memory output) pos val = (St ip base input (IntMap.insert pos val memory) output)
+
+output :: State -> [Int]
+output (St _ _ _ _ output) = output
