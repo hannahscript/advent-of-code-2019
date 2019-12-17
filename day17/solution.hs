@@ -5,6 +5,8 @@ import Data.Char
 import qualified Data.Map.Strict as Map
 import Data.List (inits, isPrefixOf, intersperse, intercalate)
 
+import Data.Time
+
 type Vec2     = (Int, Int)
 type PointMap = Map.Map Vec2 Char
 
@@ -67,18 +69,9 @@ travel pointMap pos dir steps = if isScaffolding pointMap (add pos dir)
 measure :: [RobotAction] -> Int
 measure actions = (length $ show actions) - 2
 
-sliding :: [a] -> Int -> [[a]]
-sliding _ 0  = []
-sliding xs n
-    | length xs < n = []
-    | otherwise     = (take n xs) : sliding (tail xs) n
-
-consecutiveSubsequences :: [a] -> [[a]]
-consecutiveSubsequences list = concat $ map (sliding list) [0..length list]
-
 getSequenceCandidates :: [RobotAction] -> [[RobotAction]]
 getSequenceCandidates actions = filter (\s -> (measure s < 20) && (length s > 4)) actionSeqs
-    where actionSeqs = consecutiveSubsequences actions
+    where actionSeqs = inits actions
     
 findFirstSequence actions = last (filter (\s -> measure s < 20) (inits actions))
 
@@ -123,6 +116,7 @@ vacuum :: State -> String -> Int
 vacuum state inputStr = head $ output $ run $ (withInput (alterMemory state 0 2) (map ord inputStr))
 
 main = do
+    start <- getCurrentTime
     content <- getInputFromCommaList
     let program = initState [] (parseProgram content)
     let view = getASCII program
@@ -131,6 +125,8 @@ main = do
     let initialPos = fst $ head $ filter (\(_, c) -> c == '^') (Map.toList pointMap)
     let actions = tail $ travel pointMap initialPos (0, -1) 0 -- Remove walking 0 steps at beginning
     putStrLn ("Part 2: " ++ show (vacuum program (createInput actions)))
+    end <- getCurrentTime
+    print (diffUTCTime end start)
     
 -- Solution 1: 5788
 -- Solution 2: 648545
